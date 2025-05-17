@@ -1,34 +1,4 @@
-import tensorflow as tf
-import tensorflow_datasets as tfds
-import matplotlib.pyplot as plt
 from tensorflow.keras import layers, models
-
-dataset, info = tfds.load(
-   'food101',
-   split='train+validation',
-   as_supervised=True,
-   with_info=True
-)
-
-# Preprocess
-def preprocess(image, label):
-    image = tf.image.resize(image, [224, 224]) # Resize to compatible size
-    image = tf.cast(image, tf.float32) / 255.0 # Normalize pixel values
-    return image, label
-
-# Apply preprocessing to each (image, label) pair
-dataset = dataset.map(preprocess)
-dataset = dataset.shuffle(buffer_size=10000)
-
-# for i, (image, label) in enumerate(dataset.take(10)):
-#     plt.figure()
-#     plt.imshow(image)
-#     plt.title(f"Label: {info.features['label'].int2str(label)}")
-#     plt.axis('off')
-#     plt.show()
-
-dataset = dataset.batch(32) # Group data into batches of size 32
-dataset = dataset.prefetch(tf.data.AUTOTUNE)  # Pre-fetch next batch during training
 
 model = models.Sequential()
 
@@ -36,9 +6,9 @@ model = models.Sequential()
 model.add(layers.Conv2D(
     filters=32,
     kernel_size=(3, 3),
-    activation='relu',
     input_shape=(224, 224, 3)
 ))
+model.add(layers.LeakyReLU())
 
 # add pooling layer
 model.add(layers.MaxPooling2D(pool_size=(2, 2)))
@@ -47,27 +17,31 @@ model.add(layers.MaxPooling2D(pool_size=(2, 2)))
 model.add(layers.Conv2D(
     filters=64,
     kernel_size=(3, 3),
-    activation='relu'
 ))
+model.add(layers.LeakyReLU())
 
 # add pooling layer
-model.add(layers.MaxPooling2D(pool_size=(2, 2)))
+model.add(layers.AveragePooling2D(pool_size=(2, 2)))
 
-# add conv layer
 # add convolutional layer
 model.add(layers.Conv2D(
     filters=64,
     kernel_size=(3, 3),
-    activation='relu',
 ))
+model.add(layers.LeakyReLU())
 
 # flatten as input to ANN
 model.add(layers.Flatten())
 
+# dropout to help prevent overfitting
+model.add(layers.Dropout(0.5))
+
 # hidden layer
-model.add(layers.Dense(units=128, activation='relu'))
+model.add(layers.Dense(units=64))
+model.add(layers.LeakyReLU())
 
 # output layer
 model.add(layers.Dense(101, activation='softmax'))
 
 model.summary()
+model.save('food101_cnn_pretrained.keras')
